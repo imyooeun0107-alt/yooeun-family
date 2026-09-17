@@ -69,6 +69,8 @@
             --leaf: #37B37E; --leaf-tint: #E1F7EC;
             --grape: #9163E0; --grape-tint: #F0E9FC;
             --coral: #FF8A5B; --coral-tint: #FFEDE2;
+            --teal: #2AA9A0; --teal-tint: #E1F5F3;
+            --denim: #5B7FDB; --denim-tint: #E9EDFC;
             --line-warm: #F2E3D8;
             --shadow-warm: 0 14px 34px -12px rgba(225, 77, 117, 0.22), 0 3px 10px -2px rgba(61, 43, 53, 0.06);
         }
@@ -148,6 +150,13 @@
             box-shadow: 0 4px 12px rgba(255, 94, 126, 0.08);
         }
         .nav-link .svg-icon { width: 19px; height: 19px; stroke-width: 2; color: currentColor; }
+        .nav-link[data-tab="account"]:not(.active):not(:hover) .svg-icon { color: var(--coral); }
+        .nav-link[data-tab="notes"]:not(.active):not(:hover) .svg-icon { color: var(--grape); }
+        .nav-link[data-tab="todo"]:not(.active):not(:hover) .svg-icon { color: var(--leaf); }
+        .nav-link[data-tab="schedule"]:not(.active):not(:hover) .svg-icon { color: var(--sky); }
+        .nav-link[data-tab="qt"]:not(.active):not(:hover) .svg-icon { color: var(--sun); }
+        .nav-link[data-tab="photo"]:not(.active):not(:hover) .svg-icon { color: var(--teal); }
+        .nav-link[data-tab="growth"]:not(.active):not(:hover) .svg-icon { color: var(--denim); }
 
         /* 메인 컨텐츠 영역 */
         main.main-content {
@@ -233,6 +242,8 @@
         .card-title .icon-badge.badge-leaf { background: var(--leaf-tint); color: var(--leaf); }
         .card-title .icon-badge.badge-grape { background: var(--grape-tint); color: var(--grape); }
         .card-title .icon-badge.badge-coral { background: var(--coral-tint); color: var(--coral); }
+        .card-title .icon-badge.badge-teal { background: var(--teal-tint); color: var(--teal); }
+        .card-title .icon-badge.badge-denim { background: var(--denim-tint); color: var(--denim); }
         .link-action {
             font-size: 13px;
             font-weight: 700;
@@ -517,6 +528,9 @@
             transition: all 0.2s ease;
         }
         .filter-pill.active { background: var(--primary-light); color: var(--primary); border-color: rgba(255, 94, 126, 0.25); }
+        #tab-notes .filter-pill.active { background: var(--grape-tint); color: var(--grape); border-color: var(--grape); }
+        #tab-todo .filter-pill.active { background: var(--leaf-tint); color: var(--leaf); border-color: var(--leaf); }
+        #tab-photo .filter-pill.active { background: var(--teal-tint); color: var(--teal); border-color: var(--teal); }
 
         .quick-btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
         .quick-btn {
@@ -673,6 +687,13 @@
         }
         .bottom-nav-btn.active { color: var(--primary); font-weight: 800; }
         .bottom-nav-btn .svg-icon { width: 20px; height: 20px; stroke-width: 1.8; color: currentColor; }
+        .bottom-nav-btn[data-tab="account"]:not(.active) .svg-icon { color: var(--coral); }
+        .bottom-nav-btn[data-tab="notes"]:not(.active) .svg-icon { color: var(--grape); }
+        .bottom-nav-btn[data-tab="todo"]:not(.active) .svg-icon { color: var(--leaf); }
+        .bottom-nav-btn[data-tab="schedule"]:not(.active) .svg-icon { color: var(--sky); }
+        .bottom-nav-btn[data-tab="qt"]:not(.active) .svg-icon { color: var(--sun); }
+        .bottom-nav-btn[data-tab="photo"]:not(.active) .svg-icon { color: var(--teal); }
+        .bottom-nav-btn[data-tab="growth"]:not(.active) .svg-icon { color: var(--denim); }
 
         /* 모달 오버레이 */
         .modal-overlay {
@@ -745,7 +766,7 @@
         /* 앨범 그리드 뷰 */
         .view-toggle-group { display: flex; gap: 4px; background: #F1F5F9; padding: 3px; border-radius: var(--radius-pill); }
         .view-toggle-btn { border: none; background: none; padding: 6px 10px; border-radius: var(--radius-pill); cursor: pointer; color: var(--text-muted); display: flex; align-items: center; }
-        .view-toggle-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 6px rgba(255,94,126,0.15); }
+        .view-toggle-btn.active { background: white; color: var(--teal); box-shadow: 0 2px 6px rgba(42,169,160,0.2); }
         .view-toggle-btn svg { width: 16px; height: 16px; stroke-width: 2; }
 
         .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -1000,7 +1021,7 @@
         <div id="tab-account" class="tab-panel">
             <div class="grid-2col">
                 <div>
-                    <div class="card" style="background: linear-gradient(135deg, #FFF0F3 0%, #FFFFFF 100%);">
+                    <div class="card" style="background: linear-gradient(135deg, var(--coral-tint) 0%, #FFFFFF 100%); border-left: 4px solid var(--coral);">
                         <div class="hero-metric-label">우리집 총 누적 잔액</div>
                         <div class="hero-metric-val" id="acc-hero-balance">0원</div>
 
@@ -1097,7 +1118,7 @@
         <!-- 탭 3: 패밀리 노트 (신설 독립 탭) -->
         <div id="tab-notes" class="tab-panel">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">짧은 체크리스트·잊지 말아야 할 메모를 남기는 곳이에요. (감정을 담은 하루 기록은 '가족 일기'에 써주세요)</div>
-            <div class="card">
+            <div class="card" style="border-left: 4px solid var(--grape);">
                 <div class="card-header">
                     <h2 class="card-title">자주 쓰는 퀵 노트 버튼</h2>
                 </div>
@@ -1136,7 +1157,7 @@
         <!-- 탭 4: 할 일 (To-Do) -->
         <div id="tab-todo" class="tab-panel">
             <div class="grid-2col">
-                <div class="card">
+                <div class="card" style="border-left: 4px solid var(--leaf);">
                     <h2 class="card-title">새 할 일 등록</h2>
                     <div class="form-row">
                         <select id="todo-member" aria-label="담당자" style="flex:1;">
@@ -1165,7 +1186,7 @@
         <!-- 탭 5: 일정 관리 (아이폰 캘린더 연동 탑재) -->
         <div id="tab-schedule" class="tab-panel">
             <div class="grid-2col">
-                <div class="card">
+                <div class="card" style="border-left: 4px solid var(--sky);">
                     <div class="calendar-header-bar">
                         <button class="btn-ghost" onclick="changeCalendarMonth(-1)">&lt; 이전달</button>
                         <div style="display:flex; align-items:center; gap:8px;">
@@ -1221,7 +1242,7 @@
         <div id="tab-diary" class="tab-panel">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">오늘 우리 가족의 하루와 감정을 담아요. 나중에 다시 펼쳐볼 우리 가족의 이야기가 됩니다.</div>
             <div class="grid-2col">
-                <div class="card">
+                <div class="card" style="border-left: 4px solid var(--primary);">
                     <h2 class="card-title">가족 일기 피드</h2>
                     <div id="diary-feed-list" style="margin-top:10px;"></div>
                 </div>
@@ -1275,12 +1296,12 @@
         <div id="tab-qt" class="tab-panel">
             <div class="grid-2col">
                 <div>
-                    <div class="card" style="background: linear-gradient(135deg, #FFF0F3 0%, #FFFFFF 100%);">
+                    <div class="card" style="background: linear-gradient(135deg, var(--sun-tint) 0%, #FFFFFF 100%); border-left: 4px solid var(--sun);">
                         <h2 class="card-title">분당우리교회 매일 묵상</h2>
                         <p style="font-size:13px; color:var(--text-muted); margin: 6px 0 12px;">
                             매일 업데이트되는 말씀 본문으로 하루를 시작하세요.
                         </p>
-                        <a href="https://www.woorichurch.org/modu/ov/ov_meditation.asp?lef=3" target="_blank" style="display:block; text-align:center; background:var(--primary); color:white; padding:11px; border-radius:var(--radius-pill); font-weight:800; text-decoration:none; font-size:14px; box-shadow:0 4px 12px rgba(255,94,126,0.3);">
+                        <a href="https://www.woorichurch.org/modu/ov/ov_meditation.asp?lef=3" target="_blank" style="display:block; text-align:center; background:var(--sun); color:white; padding:11px; border-radius:var(--radius-pill); font-weight:800; text-decoration:none; font-size:14px; box-shadow:0 4px 12px rgba(232,164,39,0.35);">
                             오늘 큐티 본문 바로가기 ↗
                         </a>
                     </div>
@@ -1340,7 +1361,7 @@
         <!-- 탭 8: 가족 앨범 -->
         <div id="tab-photo" class="tab-panel">
             <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">가족 일기·성장기록에 올린 사진이 자동으로 모이는 곳이에요. 직접 사진만 따로 올릴 수도 있어요.</div>
-            <div class="card">
+            <div class="card" style="border-left: 4px solid var(--teal);">
                 <div class="card-header">
                     <h2 class="card-title">가족 앨범 &amp; 포토 스토리</h2>
                     <div style="display:flex; align-items:center; gap:6px;">
@@ -1369,7 +1390,7 @@
         <!-- 탭 9: 유은이 성장기록 -->
         <div id="tab-growth" class="tab-panel">
             <div class="grid-2col">
-                <div class="card">
+                <div class="card" style="border-left: 4px solid var(--denim);">
                     <h2 class="card-title">오늘의 유은이 기록</h2>
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">유은이의 성장 순간(사진·이야기)을 남기는 곳이에요. 누가 남긴 기록인지도 함께 표시돼요.</div>
                     <div class="form-row">
