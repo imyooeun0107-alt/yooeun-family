@@ -855,7 +855,7 @@
                         </div>
                     </div>
                     <div style="text-align:right;">
-                        <span class="chip-badge" style="background:#F0FDF4; color:#166534; font-weight:800; border:1px solid #BBF7D0;">외출하기 쾌적</span>
+                        <span class="chip-badge" id="weather-comfort-badge" style="background:#F0FDF4; color:#166534; font-weight:800; border:1px solid #BBF7D0;">외출하기 쾌적</span>
                     </div>
                 </div>
             </div>
@@ -1967,17 +1967,64 @@
         }
     }
 
+    const WEATHER_CODE_MAP = {
+        0: '맑음', 1: '대체로 맑음', 2: '구름 조금', 3: '흐림',
+        45: '안개', 48: '짙은 안개',
+        51: '이슬비', 53: '이슬비', 55: '강한 이슬비',
+        56: '언 이슬비', 57: '언 이슬비',
+        61: '비', 63: '비', 65: '강한 비',
+        66: '언 비', 67: '언 비',
+        71: '눈', 73: '눈', 75: '강한 눈', 77: '진눈깨비',
+        80: '소나기', 81: '소나기', 82: '강한 소나기',
+        85: '눈 소나기', 86: '눈 소나기',
+        95: '뇌우', 96: '뇌우(우박)', 99: '뇌우(우박)'
+    };
+
+    function getComfortInfo(temp, code) {
+        if (code >= 95) return { text: '뇌우 주의', bg: '#FEF2F2', color: '#B91C1C', border: '#FECACA' };
+        if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return { text: '우산 챙기세요', bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' };
+        if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return { text: '눈길 조심하세요', bg: '#F0F9FF', color: '#0369A1', border: '#BAE6FD' };
+        if (temp >= 33) return { text: '폭염 주의', bg: '#FEF2F2', color: '#B91C1C', border: '#FECACA' };
+        if (temp >= 28) return { text: '외출 시 더워요', bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' };
+        if (temp <= -5) return { text: '한파 주의', bg: '#EFF6FF', color: '#1D4ED8', border: '#BFDBFE' };
+        if (temp <= 5) return { text: '쌀쌀해요', bg: '#F0F9FF', color: '#0369A1', border: '#BAE6FD' };
+        return { text: '외출하기 쾌적', bg: '#F0FDF4', color: '#166534', border: '#BBF7D0' };
+    }
+
+    function updateComfortBadge(temp, code) {
+        const info = getComfortInfo(temp, code);
+        const badge = document.getElementById('weather-comfort-badge');
+        if (!badge) return;
+        badge.innerText = info.text;
+        badge.style.background = info.bg;
+        badge.style.color = info.color;
+        badge.style.borderColor = info.border;
+    }
+
     function callWeatherApi(lat, lon) {
         fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Asia%2FSeoul`)
             .then(res => res.json())
             .then(data => {
-                if(!data || !data.current_weather) return;
+                if(!data || !data.current_weather) throw new Error('no weather data');
                 const temp = Math.round(data.current_weather.temperature);
+                const code = data.current_weather.weathercode;
                 document.getElementById('weather-temp').innerText = `${temp}°C`;
-                document.getElementById('weather-desc').innerText = `성남시 분당구 맑음`;
+                updateComfortBadge(temp, code);
+
+                const condition = WEATHER_CODE_MAP[code] || '';
+                fetchWithTimeout(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=ko`, 5000)
+                    .then(res => res.json())
+                    .then(geo => {
+                        const place = [geo.city, geo.locality].filter(Boolean).join(' ') || geo.principalSubdivision || '';
+                        document.getElementById('weather-desc').innerText = [place, condition].filter(Boolean).join(' ') || condition;
+                    })
+                    .catch(() => {
+                        document.getElementById('weather-desc').innerText = condition;
+                    });
             }).catch(() => {
                 document.getElementById('weather-temp').innerText = `26°C`;
                 document.getElementById('weather-desc').innerText = `성남시 분당구 맑음`;
+                updateComfortBadge(26, 0);
             });
     }
 
