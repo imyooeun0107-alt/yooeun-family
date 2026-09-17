@@ -866,6 +866,13 @@
                 <button class="del-icon-btn" style="color:#854D0E; font-size:11px; font-weight:700;" onclick="editFridgeNote()">수정</button>
             </div>
 
+            <div class="fridge-note-box" id="backup-reminder-banner" style="display:none; background:linear-gradient(135deg, #FEF9C3 0%, #FEF08A 100%);">
+                <div style="font-size:12px;">
+                    📦 <b>백업한 지 꽤 됐어요.</b> 소중한 기록이니 지금 한번 백업해두는 걸 추천드려요.
+                </div>
+                <button class="del-icon-btn" style="color:#854D0E; font-size:11px; font-weight:700;" onclick="openModal('settings')">백업하기</button>
+            </div>
+
             <div class="grid-2col">
                 <div>
                     <div class="card" style="border-left: 4px solid var(--primary);">
@@ -1560,6 +1567,12 @@
         document.getElementById('lightbox-modal').classList.remove('active');
     }
 
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        document.getElementById('lightbox-modal').classList.remove('active');
+    });
+
     function switchTab(tabId, dateParam) {
         document.querySelectorAll('.tab-panel').forEach(c => c.classList.remove('active'));
         document.querySelectorAll('.nav-link').forEach(s => s.classList.remove('active'));
@@ -1845,6 +1858,9 @@
 
         const fridgeNote = loadData('family_fridge_note', '오늘 하루도 서로 사랑하며 힘내요!');
         document.getElementById('fridge-note-text').innerText = `"${fridgeNote}"`;
+
+        const backupBanner = document.getElementById('backup-reminder-banner');
+        if (backupBanner) backupBanner.style.display = daysSinceLastBackup() >= 14 ? 'flex' : 'none';
 
         renderWeeklyStrip();
 
@@ -3221,7 +3237,17 @@
         a.setAttribute("href", dataStr);
         a.setAttribute("download", `유은이네_가족공간_백업_${new Date().toISOString().slice(0,10)}.json`);
         document.body.appendChild(a); a.click(); a.remove();
+        localStorage.setItem('last_backup_date', new Date().toISOString().slice(0, 10));
+        renderHome();
         showToast('백업 파일이 다운로드되었습니다.');
+    }
+
+    function daysSinceLastBackup() {
+        const url = getCloudUrl();
+        if (url && localStorage.getItem('cloud_sync_last_status') !== 'fail') return -1;
+        const last = localStorage.getItem('last_backup_date');
+        if (!last) return Infinity;
+        return Math.floor((new Date() - new Date(last)) / (1000 * 60 * 60 * 24));
     }
 
     function importData(event) {
@@ -3270,7 +3296,7 @@
         document.getElementById('acc-month-filter').value = today.slice(0, 7);
         document.getElementById('growth-date').value = today;
 
-        ['acc-author', 'todo-member', 'sch-author', 'diary-author', 'qt-author', 'growth-author'].forEach(rememberSelect);
+        ['acc-author', 'todo-member', 'sch-author', 'diary-author', 'qt-author', 'growth-author', 'note-tag-select'].forEach(rememberSelect);
 
         populateBibleBooksDatalist();
         setAccountType('지출');
