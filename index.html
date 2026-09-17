@@ -1953,56 +1953,66 @@
     /* 실시간 뉴스 - 구글뉴스 RSS는 프록시 서버에서 차단되는 경우가 많아
        연합뉴스/동아일보 RSS를 rss2json으로 순차 시도 후, 모두 실패하면 바로가기 링크로 대체 */
     const NEWS_SOURCES = [
-        { name: '연합뉴스', url: 'https://www.yna.co.kr/rss/news.xml' },
-        { name: '동아일보', url: 'https://rss.donga.com/total.xml' }
+        { name: '중부일보', url: 'https://www.joongboo.com/rss/allArticle.xml', count: 3, regionKeywords: /성남|광주|경기|서울|분당|판교/ },
+        { name: '베이비뉴스', url: 'https://www.ibabynews.com/rss/allArticle.xml', count: 2 }
     ];
     function fetchWithTimeout(url, ms) {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), ms);
         return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
     }
-    function fetchNews(sourceIdx) {
-        sourceIdx = sourceIdx || 0;
+    function fetchOneNewsSource(source) {
+        const feedUrl = encodeURIComponent(source.url);
+        return fetchWithTimeout(`https://api.rss2json.com/v1/api.json?rss_url=${feedUrl}&_=${Date.now()}`, 7000)
+            .then(res => res.json())
+            .then(data => {
+                if (!(data && data.status === 'ok' && data.items && data.items.length > 0)) return [];
+                let items = data.items.filter(item => !/날씨|기상특보|기상청|오늘의 운세/.test(item.title));
+                if (source.regionKeywords) {
+                    items = items.slice().sort((a, b) =>
+                        (source.regionKeywords.test(b.title) ? 1 : 0) - (source.regionKeywords.test(a.title) ? 1 : 0)
+                    );
+                }
+                return items.slice(0, source.count || 5).map(item => ({
+                    title: item.title.split(' - ')[0],
+                    link: item.link,
+                    source: source.name
+                }));
+            })
+            .catch(() => []);
+    }
+
+    function fetchNews() {
         const listEl = document.getElementById('news-feed-list');
         listEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center;">뉴스를 불러오는 중...</div>';
 
-        if (sourceIdx >= NEWS_SOURCES.length) {
-            listEl.innerHTML = `
-                <div style="font-size:13px; color:var(--text-muted); display:flex; flex-direction:column; gap:6px;">
-                    <div>지금은 실시간 뉴스를 불러올 수 없어요. 아래에서 바로 확인해 보세요.</div>
-                    <div style="display:flex; gap:10px;">
-                        <a href="https://news.naver.com" target="_blank" style="color:var(--primary); font-weight:700;">네이버 뉴스 ↗</a>
-                        <a href="https://news.daum.net" target="_blank" style="color:var(--primary); font-weight:700;">다음 뉴스 ↗</a>
-                        <a href="https://www.yna.co.kr" target="_blank" style="color:var(--primary); font-weight:700;">연합뉴스 ↗</a>
-                    </div>
-                </div>`;
-            return;
-        }
-
-        const source = NEWS_SOURCES[sourceIdx];
-        const feedUrl = encodeURIComponent(source.url);
-
-        fetchWithTimeout(`https://api.rss2json.com/v1/api.json?rss_url=${feedUrl}&_=${Date.now()}`, 7000)
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.status === 'ok' && data.items && data.items.length > 0) {
-                    const filtered = data.items.filter(item => !/날씨|기상특보|기상청/.test(item.title));
-                    const now = new Date();
-                    const hh = String(now.getHours()).padStart(2,'0');
-                    const mm = String(now.getMinutes()).padStart(2,'0');
-                    listEl.innerHTML = filtered.slice(0, 5).map((item, i) => `
-                        <div style="font-size:13px; display:flex; gap:8px; min-width:0;">
-                            <span style="font-weight:700; color:var(--primary); flex-shrink:0;">${i+1}.</span>
-                            <a href="${item.link}" target="_blank" style="color:var(--text-body); text-decoration:none; font-weight:600; min-width:0; overflow-wrap:anywhere;">
-                                ${item.title.split(' - ')[0]}
-                            </a>
+        Promise.all(NEWS_SOURCES.map(fetchOneNewsSource)).then(results => {
+            const merged = [].concat(...results);
+            if (merged.length === 0) {
+                listEl.innerHTML = `
+                    <div style="font-size:13px; color:var(--text-muted); display:flex; flex-direction:column; gap:6px;">
+                        <div>지금은 실시간 뉴스를 불러올 수 없어요. 아래에서 바로 확인해 보세요.</div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <a href="https://www.ibabynews.com" target="_blank" style="color:var(--primary); font-weight:700;">베이비뉴스 ↗</a>
+                            <a href="https://www.joongboo.com" target="_blank" style="color:var(--primary); font-weight:700;">중부일보 ↗</a>
+                            <a href="https://news.naver.com" target="_blank" style="color:var(--primary); font-weight:700;">네이버 뉴스 ↗</a>
                         </div>
-                    `).join('') + `<div style="font-size:10px; color:var(--text-sub); text-align:right; margin-top:2px;">${source.name} · ${hh}:${mm} 업데이트</div>`;
-                } else {
-                    throw new Error('empty feed');
-                }
-            })
-            .catch(() => fetchNews(sourceIdx + 1));
+                    </div>`;
+                return;
+            }
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2,'0');
+            const mm = String(now.getMinutes()).padStart(2,'0');
+            listEl.innerHTML = merged.map((item, i) => `
+                <div style="font-size:13px; display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span style="font-weight:700; color:var(--primary); flex-shrink:0;">${i+1}.</span>
+                    <a href="${item.link}" target="_blank" style="color:var(--text-body); text-decoration:none; font-weight:600; min-width:0; overflow-wrap:anywhere; flex:1;">
+                        ${item.title}
+                    </a>
+                    <span class="chip-badge" style="background:#F1F5F9; color:var(--text-muted); flex-shrink:0; font-size:9px;">${item.source}</span>
+                </div>
+            `).join('') + `<div style="font-size:10px; color:var(--text-sub); text-align:right; margin-top:2px;">${hh}:${mm} 업데이트</div>`;
+        });
     }
 
     function getDDayBadge(dateStr) {
