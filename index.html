@@ -663,6 +663,7 @@
             padding: 24px;
             box-shadow: var(--shadow-pillow);
         }
+        .modal-card:focus { outline: none; }
 
         #toast {
             position: fixed;
@@ -1373,7 +1374,7 @@
 
 <!-- 모달 1: 통합 가족 검색 -->
 <div class="modal-overlay" id="modal-search">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" tabindex="-1">
         <div class="card-header">
             <h3 style="font-size:16px; font-weight:800; color:var(--text-title);">통합 가족 검색</h3>
             <button class="del-icon-btn" style="font-size:18px;" onclick="closeModal('search')" aria-label="닫기">&times;</button>
@@ -1433,7 +1434,7 @@
 
 <!-- 모달 3: 데이터 백업 및 설정 -->
 <div class="modal-overlay" id="modal-settings">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" tabindex="-1">
         <div class="card-header">
             <h3 style="font-size:17px; font-weight:800; color:var(--text-title);">데이터 백업 & 복원</h3>
             <button class="del-icon-btn" style="font-size:18px;" onclick="closeModal('settings')" aria-label="닫기">&times;</button>
@@ -1466,7 +1467,7 @@
 
 <!-- 모달 4: 성경통독(PRS) 설정 -->
 <div class="modal-overlay" id="modal-prs">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" tabindex="-1">
         <div class="card-header">
             <h3 style="font-size:17px; font-weight:800; color:var(--text-title);">성경통독(PRS) 설정</h3>
             <button class="del-icon-btn" style="font-size:18px;" onclick="closeModal('prs')" aria-label="닫기">&times;</button>
@@ -1481,7 +1482,7 @@
 
 <!-- 모달 5: 퀵 노트 버튼 생성 -->
 <div class="modal-overlay" id="modal-quickbtn">
-    <div class="modal-card">
+    <div class="modal-card" role="dialog" aria-modal="true" tabindex="-1">
         <div class="card-header">
             <h3 style="font-size:17px; font-weight:800; color:var(--text-title);">퀵버튼 만들기</h3>
             <button class="del-icon-btn" style="font-size:18px;" onclick="closeModal('quickbtn')" aria-label="닫기">&times;</button>
@@ -1504,7 +1505,7 @@
 </div>
 
 <!-- 토스트 알림 -->
-<div id="toast">알림</div>
+<div id="toast" role="status" aria-live="polite">알림</div>
 
 <script>
     const expenseCategories = ["식비", "생활/마트", "육아/교육", "주거/통신", "의료/건강", "교통/차량", "문화/여가", "경조사", "기타지출"];
@@ -1545,8 +1546,14 @@
         setTimeout(() => { toast.classList.remove('show'); }, 2000);
     }
 
+    let lastFocusedEl = null;
+
     function openModal(id) {
-        document.getElementById('modal-' + id).classList.add('active');
+        lastFocusedEl = document.activeElement;
+        const overlay = document.getElementById('modal-' + id);
+        overlay.classList.add('active');
+        const card = overlay.querySelector('.modal-card');
+        if (card) card.focus();
         if(id === 'prs') {
             const config = loadData('family_prs_config', { text: "시편 & 잠언", video: "PLAYLIST:PL71E3nkzo2ViOquuNLkNJQMeyvIqolK5G" });
             document.getElementById('prs-input-text').value = config.text;
@@ -1557,20 +1564,28 @@
             updateCloudSyncStatus();
         }
     }
-    function closeModal(id) { document.getElementById('modal-' + id).classList.remove('active'); }
+    function closeModal(id) {
+        document.getElementById('modal-' + id).classList.remove('active');
+        if (lastFocusedEl && lastFocusedEl.focus) lastFocusedEl.focus();
+    }
 
     function openLightbox(src) {
+        lastFocusedEl = document.activeElement;
         document.getElementById('lightbox-target-img').src = src;
         document.getElementById('lightbox-modal').classList.add('active');
+        document.querySelector('.lightbox-close-btn').focus();
     }
     function closeLightbox() {
         document.getElementById('lightbox-modal').classList.remove('active');
+        if (lastFocusedEl && lastFocusedEl.focus) lastFocusedEl.focus();
     }
 
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
+        const anyOpen = document.querySelector('.modal-overlay.active') || document.getElementById('lightbox-modal').classList.contains('active');
         document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
         document.getElementById('lightbox-modal').classList.remove('active');
+        if (anyOpen && lastFocusedEl && lastFocusedEl.focus) lastFocusedEl.focus();
     });
 
     function switchTab(tabId, dateParam) {
