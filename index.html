@@ -1508,6 +1508,14 @@
 <div id="toast" role="status" aria-live="polite">알림</div>
 
 <script>
+    /* toISOString()은 항상 UTC 기준이라, 자정~오전 9시(한국시간) 사이에는 하루 전 날짜를 반환하는 문제가 있다.
+       "오늘 날짜"는 항상 이 함수로 구해서 기기의 로컬 시간 기준 날짜를 쓴다. */
+    function getLocalDateIso(d) {
+        d = d || new Date();
+        const localTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+        return localTime.toISOString().split('T')[0];
+    }
+
     const expenseCategories = ["식비", "생활/마트", "육아/교육", "주거/통신", "의료/건강", "교통/차량", "문화/여가", "경조사", "기타지출"];
     const incomeCategories = ["월급", "상여금", "용돈", "금융소득", "기타수입"];
 
@@ -1517,7 +1525,7 @@
     let currentPhotoView = 'grid';
     let currentCalYear = new Date().getFullYear();
     let currentCalMonth = new Date().getMonth();
-    let selectedCalDate = new Date().toISOString().split('T')[0];
+    let selectedCalDate = getLocalDateIso();
     let diaryEditingIndex = -1;
     let growthEditingIndex = -1;
 
@@ -1802,7 +1810,7 @@
         else if (/주유|GS|SK|S-OIL|오일/.test(text)) cat = '교통/차량';
         else if (/소아과|약국|병원|유치원|어린이집/.test(text)) cat = '육아/교육';
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateIso();
         const author = document.getElementById('acc-author').value;
         const data = loadData('family_acc');
         data.unshift({ date: today, type: '지출', cat, author, amount, desc });
@@ -1815,7 +1823,7 @@
     }
 
     function quickAddExpense(desc, amount, cat) {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateIso();
         const author = document.getElementById('acc-author').value;
         const data = loadData('family_acc');
         data.unshift({ date: today, type: '지출', cat, author, amount, desc });
@@ -1881,7 +1889,7 @@
         renderWeeklyStrip();
 
         const schData = loadData('family_sch');
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getLocalDateIso();
         const upcoming = schData.filter(s => s.date >= todayIso).slice(0, 3);
         const schListEl = document.getElementById('home-schedule-list');
 
@@ -1911,7 +1919,7 @@
         }
 
         const accData = loadData('family_acc');
-        const currentMonth = new Date().toISOString().slice(0, 7);
+        const currentMonth = getLocalDateIso().slice(0, 7);
         let mIn = 0, mOut = 0;
         accData.filter(a => a.date.startsWith(currentMonth)).forEach(a => {
             if(a.type === '수입') mIn += a.amount;
@@ -1933,12 +1941,12 @@
 
         const days = ['일', '월', '화', '수', '목', '금', '토'];
         const allEvents = loadData('family_sch');
-        const todayIso = today.toISOString().split('T')[0];
+        const todayIso = getLocalDateIso(today);
 
         for(let i=0; i<7; i++) {
             const d = new Date(sunday);
             d.setDate(sunday.getDate() + i);
-            const dateIso = d.toISOString().split('T')[0];
+            const dateIso = getLocalDateIso(d);
             const isToday = (dateIso === todayIso);
             const dayEvents = allEvents.filter(e => e.date === dateIso);
 
@@ -2165,7 +2173,7 @@
     }
 
     function renderAccount() {
-        const selectedMonth = document.getElementById('acc-month-filter').value || new Date().toISOString().slice(0, 7);
+        const selectedMonth = document.getElementById('acc-month-filter').value || getLocalDateIso().slice(0, 7);
         document.getElementById('acc-month-filter').value = selectedMonth;
         const monthParts = selectedMonth.split('-');
         document.getElementById('acc-month-label').innerText = `${monthParts[0]}년 ${monthParts}월 현황`;
@@ -2274,7 +2282,7 @@
 
         const data = loadData('family_notes', DEFAULT_FAMILY_NOTES);
         const lines = content.split('\n').map(l => l.trim()).filter(l => l);
-        const note = { tag, title, content, date: new Date().toISOString().split('T')[0] };
+        const note = { tag, title, content, date: getLocalDateIso() };
         if (lines.length > 1) note.checked = lines.map(() => false);
 
         data.unshift(note);
@@ -2355,7 +2363,7 @@
         if(!q) return;
         const notes = loadData('family_notes', DEFAULT_FAMILY_NOTES);
         const lines = q.content.split('\n').map(l => l.trim()).filter(l => l);
-        const note = { tag: q.tag, title: q.title, content: q.content, date: new Date().toISOString().split('T')[0] };
+        const note = { tag: q.tag, title: q.title, content: q.content, date: getLocalDateIso() };
         if (lines.length > 1) note.checked = lines.map(() => false);
         notes.unshift(note);
         saveData('family_notes', notes);
@@ -2409,7 +2417,7 @@
         const text = document.getElementById('todo-input').value.trim();
         if(!text) return;
         const data = loadData('family_todo');
-        data.unshift({ member, text, done: false, date: new Date().toISOString().split('T')[0] });
+        data.unshift({ member, text, done: false, date: getLocalDateIso() });
         saveData('family_todo', data);
         document.getElementById('todo-input').value = '';
         renderTodo();
@@ -2475,7 +2483,7 @@
         const today = new Date();
         currentCalYear = today.getFullYear();
         currentCalMonth = today.getMonth();
-        selectedCalDate = today.toISOString().split('T')[0];
+        selectedCalDate = getLocalDateIso(today);
         document.getElementById('sch-date').value = selectedCalDate;
         renderCalendar();
         showToast('오늘 날짜로 이동했습니다.');
@@ -2498,7 +2506,7 @@
         const prevDays = new Date(currentCalYear, currentCalMonth, 0).getDate();
 
         const allEvents = loadData('family_sch');
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getLocalDateIso();
 
         for (let i = firstDay - 1; i >= 0; i--) {
             container.innerHTML += `<div class="cal-day-cell other-month"><span class="cal-num">${prevDays - i}</span></div>`;
@@ -2579,7 +2587,7 @@
 
     /* 오늘 날짜가 된 일정을 자동으로 할 일 목록에 반영 */
     function syncTodayScheduleToTodo() {
-        const todayIso = new Date().toISOString().split('T')[0];
+        const todayIso = getLocalDateIso();
         const schData = loadData('family_sch');
         let changed = false;
         const todoData = loadData('family_todo');
@@ -2691,7 +2699,7 @@
 
         if(!content) return alert('내용을 입력해주세요.');
 
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateIso();
 
         if(photoInput.files && photoInput.files[0]) {
             const reader = new FileReader();
@@ -2837,7 +2845,7 @@
     }
 
     function addGrowth() {
-        const date = document.getElementById('growth-date').value || new Date().toISOString().slice(0, 10);
+        const date = document.getElementById('growth-date').value || getLocalDateIso();
         const author = document.getElementById('growth-author').value;
         const content = document.getElementById('growth-content').value.trim();
         const tags = parseTagsInput(document.getElementById('growth-tags').value);
@@ -3083,7 +3091,7 @@
         const author = document.getElementById('qt-author').value;
         const content = document.getElementById('qt-content').value.trim();
         if(!content) return alert('내용을 입력해주세요.');
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateIso();
         const data = loadData('family_qt');
         data.unshift({ author, content, date: today });
         saveData('family_qt', data);
@@ -3138,7 +3146,7 @@
         if(!files.length) return;
 
         const person = prompt("누구의 사진인가요? (유은이 / 엄마 / 아빠 / 가족)", "유은이") || "가족";
-        const today = new Date().toISOString().slice(0, 10);
+        const today = getLocalDateIso();
         let remaining = files.length;
 
         files.forEach(file => {
@@ -3298,9 +3306,9 @@
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allData, null, 2));
         const a = document.createElement('a');
         a.setAttribute("href", dataStr);
-        a.setAttribute("download", `유은이네_가족공간_백업_${new Date().toISOString().slice(0,10)}.json`);
+        a.setAttribute("download", `유은이네_가족공간_백업_${getLocalDateIso()}.json`);
         document.body.appendChild(a); a.click(); a.remove();
-        localStorage.setItem('last_backup_date', new Date().toISOString().slice(0, 10));
+        localStorage.setItem('last_backup_date', getLocalDateIso());
         renderHome();
         showToast('백업 파일이 다운로드되었습니다.');
     }
@@ -3353,7 +3361,7 @@
     }
 
     function initApp() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLocalDateIso();
         document.getElementById('acc-date').value = today;
         document.getElementById('sch-date').value = today;
         document.getElementById('acc-month-filter').value = today.slice(0, 7);
