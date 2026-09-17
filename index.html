@@ -458,7 +458,7 @@
 
         /* 가족 멤버 뱃지 (깔끔한 아빠 스타일 적용) */
         .member-badge-dad { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
-        .member-badge-mom { background: #FFE4E6; color: #BE123C; border: 1px solid #FECDD3; }
+        .member-badge-mom { background: #F3E8FF; color: #7C3AED; border: 1px solid #E9D5FF; }
         .member-badge-child { background: #FEF9C3; color: #854D0E; border: 1px solid #FEF08A; }
         .member-badge-all { background: #F1F5F9; color: #334155; border: 1px solid #E2E8F0; }
 
@@ -1030,7 +1030,7 @@
                         <div class="form-row">
                             <input type="text" id="acc-amount-display" placeholder="금액 (원)" style="flex:1;" oninput="formatAmountInput(this)">
                             <input type="hidden" id="acc-amount" value="0">
-                            <input type="text" id="acc-desc" placeholder="내역 (예: 마트 장보기)" style="flex:1.5;">
+                            <input type="text" id="acc-desc" placeholder="내역 (예: 마트 장보기)" style="flex:1.5;" onkeydown="if(event.key==='Enter') addAccount()">
                         </div>
                         <div class="amount-pills-row">
                             <button type="button" class="amount-pill" onclick="addIncrementalAmount(1000)">+1천원</button>
@@ -1101,7 +1101,7 @@
                             <option value="엄마">엄마 (👩🏻)</option>
                             <option value="유은이">유은이 (👧🏻)</option>
                         </select>
-                        <input type="text" id="todo-input" placeholder="할 일을 입력하세요" style="flex:2;">
+                        <input type="text" id="todo-input" placeholder="할 일을 입력하세요" style="flex:2;" onkeydown="if(event.key==='Enter') addTodo()">
                     </div>
                     <button class="btn-primary" onclick="addTodo()">추가하기</button>
                 </div>
@@ -1159,7 +1159,7 @@
                             </select>
                         </div>
                         <div class="form-row">
-                            <input type="text" id="sch-title" placeholder="일정 제목 (예: 바다 나들이)" style="flex:1;">
+                            <input type="text" id="sch-title" placeholder="일정 제목 (예: 바다 나들이)" style="flex:1;" onkeydown="if(event.key==='Enter') addSchedule()">
                         </div>
                         <button class="btn-primary" onclick="addSchedule()">이 날짜에 등록</button>
                         <div style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:6px;">💡 일정 날짜가 오늘이 되면 자동으로 할 일 목록에 추가돼요.</div>
@@ -3255,12 +3255,22 @@
         location.reload();
     }
 
+    function rememberSelect(selectId) {
+        const el = document.getElementById(selectId);
+        if (!el) return;
+        const saved = localStorage.getItem('pref_' + selectId);
+        if (saved && Array.from(el.options).some(o => o.value === saved)) el.value = saved;
+        el.addEventListener('change', () => localStorage.setItem('pref_' + selectId, el.value));
+    }
+
     function initApp() {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('acc-date').value = today;
         document.getElementById('sch-date').value = today;
         document.getElementById('acc-month-filter').value = today.slice(0, 7);
         document.getElementById('growth-date').value = today;
+
+        ['acc-author', 'todo-member', 'sch-author', 'diary-author', 'qt-author', 'growth-author'].forEach(rememberSelect);
 
         populateBibleBooksDatalist();
         setAccountType('지출');
