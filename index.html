@@ -2224,7 +2224,7 @@
         }
 
         const progressEl = document.getElementById('acc-cat-progress-list');
-        const sortedCats = Object.entries(catMap).sort((a,b) => b - a);
+        const sortedCats = Object.entries(catMap).sort((a,b) => b[1] - a[1]);
         if(sortedCats.length > 0 && mOut > 0) {
             progressEl.innerHTML = sortedCats.map(([name, val]) => {
                 const pct = Math.round((val / mOut) * 100);
