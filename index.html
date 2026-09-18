@@ -20,6 +20,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
     <style>
 
         :root {
@@ -809,7 +813,14 @@
 </head>
 <body>
 
-<div class="app-layout">
+<div id="auth-gate" style="position:fixed; inset:0; z-index:1000; background:linear-gradient(155deg, #FFDCE6 0%, #FFEFDD 55%, #FFF8F1 100%); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; text-align:center; padding:24px;">
+    <span class="mascot-icon" style="width:84px; height:84px;"></span>
+    <h1 style="font-family:'Jua', sans-serif; font-size:22px; color:var(--text-title); font-weight:400; margin:0;">유은이네 공간</h1>
+    <p style="font-size:14px; color:var(--text-body); font-weight:600; max-width:280px;" id="auth-gate-msg">가족만 들어올 수 있는 공간이에요.<br>구글 계정으로 로그인해 주세요.</p>
+    <button class="btn-primary" style="width:auto; padding:14px 30px;" onclick="signInWithGoogle()">Google로 로그인</button>
+</div>
+
+<div class="app-layout" id="app-layout-root" style="visibility:hidden;">
     <!-- 사이드바 (MacBook / PC 와이드 뷰) -->
     <aside class="sidebar">
         <div class="sidebar-logo">
@@ -1504,16 +1515,11 @@
         <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
 
         <div style="border-top:1px solid var(--border); padding-top:14px; margin-top:4px;">
-            <div style="font-size:13px; font-weight:800; color:var(--text-title); margin-bottom:6px;">☁️ 여러 기기 동기화 (구글시트 연동)</div>
-            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
-                Apps Script 웹 앱 URL을 넣으면, 이 기기에서 저장할 때마다 자동으로 구글시트에도 백업되고, 다른 기기에서도 같은 주소를 넣으면 데이터를 불러올 수 있어요.
+            <div style="font-size:13px; font-weight:800; color:var(--text-title); margin-bottom:6px;">☁️ 실시간 가족 공유</div>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;" id="sync-status-text">
+                로그인 확인 중...
             </p>
-            <input type="text" id="cloud-sync-url" aria-label="동기화 주소" placeholder="https://script.google.com/macros/s/xxxx/exec">
-            <div style="display:flex; gap:6px; margin-bottom:8px;">
-                <button class="btn-primary" style="flex:1; padding:10px; font-size:13px;" onclick="saveCloudSyncUrl()">저장</button>
-                <button class="btn-ghost" style="flex:1;" onclick="manualCloudSync()">지금 동기화</button>
-            </div>
-            <div style="font-size:11px; color:var(--text-sub);" id="cloud-sync-status">아직 연동되지 않았습니다.</div>
+            <button class="btn-ghost" style="width:100%; padding:10px;" onclick="signOutOfApp()">로그아웃</button>
         </div>
 
         <div style="border-top:1px solid var(--border); padding-top:12px; margin-top:12px; text-align:center;">
@@ -1565,6 +1571,63 @@
 <div id="toast" role="status" aria-live="polite">알림</div>
 
 <script>
+    /* ===== Firebase 로그인 & 실시간 공유 저장소 ===== */
+    const firebaseConfig = {
+        apiKey: "AIzaSyC-qf2qdilAvsgho9llqMHcFPpvK3ys79I",
+        authDomain: "yooeun-family.firebaseapp.com",
+        projectId: "yooeun-family",
+        storageBucket: "yooeun-family.firebasestorage.app",
+        messagingSenderId: "513155873327",
+        appId: "1:513155873327:web:d08da46aad2940f24524da"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const ALLOWED_EMAILS = ['imyooeun0107@gmail.com', 'lord911203@gmail.com'];
+
+    function signInWithGoogle() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        document.getElementById('auth-gate-msg').innerHTML = '로그인 창으로 이동할게요...';
+        /* 홈 화면에 추가된 앱(PWA)에서는 팝업 로그인이 잘 안 열려서, 페이지 이동 방식(redirect)을 사용 */
+        auth.signInWithRedirect(provider).catch(() => {
+            document.getElementById('auth-gate-msg').innerHTML = '로그인에 실패했어요.<br>다시 시도해 주세요.';
+        });
+    }
+
+    function signOutOfApp() {
+        auth.signOut();
+    }
+
+    function updateSyncStatusUI() {
+        const el = document.getElementById('sync-status-text');
+        if (!el) return;
+        const user = auth.currentUser;
+        el.innerText = user ? `${user.email} 계정으로 실시간 연결되어 있어요.` : '로그인 확인 중...';
+    }
+
+    auth.getRedirectResult().catch(function(err) {
+        document.getElementById('auth-gate-msg').innerHTML = '로그인에 실패했어요 (' + err.code + ').<br>다시 시도해 주세요.';
+    });
+
+    auth.onAuthStateChanged(function(user) {
+        const gate = document.getElementById('auth-gate');
+        const appRoot = document.getElementById('app-layout-root');
+        if (user && ALLOWED_EMAILS.includes(user.email)) {
+            gate.style.display = 'none';
+            appRoot.style.visibility = 'visible';
+            updateSyncStatusUI();
+            watchAllCollections();
+        } else if (user) {
+            auth.signOut();
+            document.getElementById('auth-gate-msg').innerHTML = '가족 계정이 아니에요.<br>다른 구글 계정으로 다시 로그인해 주세요.';
+            gate.style.display = 'flex';
+            appRoot.style.visibility = 'hidden';
+        } else {
+            gate.style.display = 'flex';
+            appRoot.style.visibility = 'hidden';
+        }
+    });
+
     /* toISOString()은 항상 UTC 기준이라, 자정~오전 9시(한국시간) 사이에는 하루 전 날짜를 반환하는 문제가 있다.
        "오늘 날짜"는 항상 이 함수로 구해서 기기의 로컬 시간 기준 날짜를 쓴다. */
     function getLocalDateIso(d) {
@@ -1625,8 +1688,7 @@
             document.getElementById('prs-input-video').value = config.video;
         }
         if(id === 'settings') {
-            document.getElementById('cloud-sync-url').value = getCloudUrl();
-            updateCloudSyncStatus();
+            updateSyncStatusUI();
         }
     }
     function closeModal(id) {
@@ -1680,102 +1742,65 @@
         if(tabId === 'growth') renderGrowth();
     }
 
+    /* ===== 실시간 공유 저장소 (Firebase Firestore) =====
+       기존 localStorage 방식은 기기마다 데이터가 따로 놀아서(태경님 폰 / 목사님 폰이
+       서로 연결 안 됨), 로그인 기반 실시간 공유 저장소로 교체함. loadData/saveData의
+       호출 방식(키로 통째로 읽고 쓰기)은 그대로 유지해서 나머지 코드는 손대지 않았다. */
+    const DATA_KEYS = ['family_acc','family_notes','family_todo','family_sch','family_diary','family_qt','family_photo','family_growth','family_note_quickbuttons','family_prs_config','family_fridge_note'];
+    window.__cloudCache = {};
+    let __pendingInitialLoads = new Set(DATA_KEYS);
+    let __appStarted = false;
+
     function loadData(key, defaultVal = []) {
-        try {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : defaultVal;
-        } catch(e) { return defaultVal; }
+        const val = window.__cloudCache[key];
+        return val !== undefined ? val : defaultVal;
     }
+
     function saveData(key, data) {
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-        } catch(e) {
-            alert('저장 공간이 가득 찼어요. 지금 설정 화면을 열어드릴게요 — "전체 데이터 백업"으로 먼저 내려받은 뒤, 오래된 사진을 정리해 주세요.');
-            openModal('settings');
-        }
-        pushToCloud(key, data);
-    }
-
-    /* ===== 클라우드 동기화 (구글 Apps Script) ===== */
-    const SYNC_KEYS = ['family_acc','family_notes','family_todo','family_sch','family_diary','family_qt','family_photo','family_growth','family_note_quickbuttons','family_prs_config','family_fridge_note'];
-
-    function getCloudUrl() {
-        return localStorage.getItem('cloud_sync_url') || '';
-    }
-
-    function saveCloudSyncUrl() {
-        const url = document.getElementById('cloud-sync-url').value.trim();
-        localStorage.setItem('cloud_sync_url', url);
-        showToast(url ? '동기화 주소가 저장되었습니다.' : '동기화 주소가 삭제되었습니다.');
-        updateCloudSyncStatus();
-        if (url) manualCloudSync();
-    }
-
-    function updateCloudSyncStatus() {
-        const el = document.getElementById('cloud-sync-status');
-        if (!el) return;
-        const url = getCloudUrl();
-        if (!url) { el.innerText = '아직 연동되지 않았습니다.'; el.style.color = ''; return; }
-        const last = localStorage.getItem('cloud_sync_last');
-        const failed = localStorage.getItem('cloud_sync_last_status') === 'fail';
-        if (failed) {
-            el.innerText = '⚠️ 동기화 실패 — 인터넷 연결을 확인하고 다시 시도해 주세요.' + (last ? ` (마지막 성공: ${last})` : '');
-            el.style.color = 'var(--expense)';
-        } else {
-            el.innerText = last ? `마지막 동기화: ${last}` : '연동됨 (아직 동기화 기록 없음)';
-            el.style.color = '';
-        }
-    }
-
-    function pushToCloud(key, data) {
-        const url = getCloudUrl();
-        if (!url || !SYNC_KEYS.includes(key)) return;
-        fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ key, value: data })
-        }).then(() => {
-            localStorage.setItem('cloud_sync_last_status', 'ok');
-            updateCloudSyncStatus();
-        }).catch(() => {
-            localStorage.setItem('cloud_sync_last_status', 'fail');
-            updateCloudSyncStatus();
+        window.__cloudCache[key] = data;
+        db.collection('family_data').doc(key).set({ value: data }).catch(() => {
+            alert('저장 중 문제가 발생했어요. 인터넷 연결을 확인하고 다시 시도해주세요.');
         });
     }
 
-    function pullFromCloud(callback) {
-        const url = getCloudUrl();
-        if (!url) { if (callback) callback(); return; }
-        fetchWithTimeout(url, 8000)
-            .then(res => res.json())
-            .then(all => {
-                SYNC_KEYS.forEach(k => {
-                    if (all[k] !== undefined) localStorage.setItem(k, JSON.stringify(all[k]));
-                });
-                const now = new Date();
-                localStorage.setItem('cloud_sync_last', `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`);
-                localStorage.setItem('cloud_sync_last_status', 'ok');
-                if (callback) callback();
-            })
-            .catch(() => {
-                localStorage.setItem('cloud_sync_last_status', 'fail');
-                if (callback) callback();
-            });
+    function refreshAllViews() {
+        renderHome(); renderAccount(); renderNotes(); renderTodo();
+        renderSchedule(); renderDiary(); renderQT(); renderPhoto(); renderGrowth();
     }
 
-    function manualCloudSync() {
-        const url = getCloudUrl();
-        if (!url) return alert('먼저 동기화 주소를 저장해주세요.');
-        showToast('동기화 중...');
-        pullFromCloud(() => {
-            updateCloudSyncStatus();
-            renderHome(); renderAccount(); renderNotes(); renderTodo();
-            renderSchedule(); renderDiary(); renderQT(); renderPhoto(); renderGrowth();
-            if (localStorage.getItem('cloud_sync_last_status') === 'fail') {
-                showToast('동기화에 실패했습니다. 인터넷 연결을 확인해주세요.');
-            } else {
-                showToast('동기화가 완료되었습니다.');
-            }
+    function watchAllCollections() {
+        DATA_KEYS.forEach(key => {
+            db.collection('family_data').doc(key).onSnapshot(snap => {
+                if (snap.exists) {
+                    window.__cloudCache[key] = snap.data().value;
+                } else {
+                    // 새 저장소가 비어있으면, 이 기기에 남아있던 예전 localStorage 기록을 한 번만 옮겨온다
+                    let seed;
+                    try {
+                        const raw = localStorage.getItem(key);
+                        seed = raw ? JSON.parse(raw) : undefined;
+                    } catch (e) { seed = undefined; }
+                    if (seed !== undefined) {
+                        db.collection('family_data').doc(key).set({ value: seed });
+                        window.__cloudCache[key] = seed;
+                    } else {
+                        window.__cloudCache[key] = undefined;
+                    }
+                }
+                __pendingInitialLoads.delete(key);
+                if (!__appStarted && __pendingInitialLoads.size === 0) {
+                    __appStarted = true;
+                    initApp();
+                } else if (__appStarted) {
+                    refreshAllViews();
+                }
+            }, () => {
+                __pendingInitialLoads.delete(key);
+                if (!__appStarted && __pendingInitialLoads.size === 0) {
+                    __appStarted = true;
+                    initApp();
+                }
+            });
         });
     }
 
@@ -3371,8 +3396,6 @@
     }
 
     function daysSinceLastBackup() {
-        const url = getCloudUrl();
-        if (url && localStorage.getItem('cloud_sync_last_status') !== 'fail') return -1;
         const last = localStorage.getItem('last_backup_date');
         if (!last) return Infinity;
         return Math.floor((new Date() - new Date(last)) / (1000 * 60 * 60 * 24));
@@ -3404,9 +3427,15 @@
     }
 
     function clearAllData() {
-        if(!confirm('정말 모든 데이터를 삭제하시겠습니까?')) return;
-        localStorage.clear();
-        location.reload();
+        if(!confirm('정말 모든 데이터를 삭제하시겠습니까? 태경님 것을 포함해 모든 기록이 사라지며 되돌릴 수 없습니다.')) return;
+        const batch = db.batch();
+        DATA_KEYS.forEach(key => batch.delete(db.collection('family_data').doc(key)));
+        batch.commit().then(() => {
+            localStorage.clear();
+            location.reload();
+        }).catch(() => {
+            alert('삭제 중 문제가 발생했어요. 인터넷 연결을 확인하고 다시 시도해주세요.');
+        });
     }
 
     function rememberSelect(selectId) {
@@ -3444,9 +3473,8 @@
         setInterval(updateClock, 30000);
     }
 
-    window.onload = function() {
-        pullFromCloud(initApp);
-    };
+    /* 예전엔 window.onload에서 바로 initApp을 불렀지만, 이제는 로그인 확인 후
+       모든 데이터가 처음 한 번 도착하면 watchAllCollections()가 initApp을 호출한다. */
 </script>
 </body>
 </html>
