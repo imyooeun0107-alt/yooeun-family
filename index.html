@@ -1587,10 +1587,15 @@
 
     function signInWithGoogle() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        document.getElementById('auth-gate-msg').innerHTML = '로그인 창으로 이동할게요...';
-        /* 홈 화면에 추가된 앱(PWA)에서는 팝업 로그인이 잘 안 열려서, 페이지 이동 방식(redirect)을 사용 */
-        auth.signInWithRedirect(provider).catch(() => {
-            document.getElementById('auth-gate-msg').innerHTML = '로그인에 실패했어요.<br>다시 시도해 주세요.';
+        document.getElementById('auth-gate-msg').innerHTML = '로그인 창을 여는 중이에요...';
+        auth.signInWithPopup(provider).catch(function(err) {
+            if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+                document.getElementById('auth-gate-msg').innerHTML = '팝업이 막혔어요.<br>브라우저에서 팝업 허용 후 다시 눌러주세요.';
+            } else if (err.code !== 'auth/popup-closed-by-user') {
+                document.getElementById('auth-gate-msg').innerHTML = '로그인에 실패했어요 (' + err.code + ').<br>다시 시도해 주세요.';
+            } else {
+                document.getElementById('auth-gate-msg').innerHTML = '가족만 들어올 수 있는 공간이에요.<br>구글 계정으로 로그인해 주세요.';
+            }
         });
     }
 
@@ -1605,16 +1610,15 @@
         el.innerText = user ? `${user.email} 계정으로 실시간 연결되어 있어요.` : '로그인 확인 중...';
     }
 
-    auth.getRedirectResult().catch(function(err) {
-        document.getElementById('auth-gate-msg').innerHTML = '로그인에 실패했어요 (' + err.code + ').<br>다시 시도해 주세요.';
-    });
-
     auth.onAuthStateChanged(function(user) {
         const gate = document.getElementById('auth-gate');
         const appRoot = document.getElementById('app-layout-root');
         if (user && ALLOWED_EMAILS.includes(user.email)) {
-            gate.style.display = 'none';
-            appRoot.style.visibility = 'visible';
+            /* 로그인은 됐지만 아직 가족 기록을 불러오는 중일 수 있으니, 다 불러올 때까지는
+               게이트 화면을 그대로 두고 안내 문구만 바꾼다 (빈 화면이 잠깐 보이는 문제 방지) */
+            document.getElementById('auth-gate-msg').innerHTML = '가족 기록을 불러오는 중이에요...';
+            const btn = gate.querySelector('button');
+            if (btn) btn.style.display = 'none';
             updateSyncStatusUI();
             watchAllCollections();
         } else if (user) {
@@ -1790,6 +1794,8 @@
                 __pendingInitialLoads.delete(key);
                 if (!__appStarted && __pendingInitialLoads.size === 0) {
                     __appStarted = true;
+                    document.getElementById('auth-gate').style.display = 'none';
+                    document.getElementById('app-layout-root').style.visibility = 'visible';
                     initApp();
                 } else if (__appStarted) {
                     refreshAllViews();
@@ -1798,6 +1804,8 @@
                 __pendingInitialLoads.delete(key);
                 if (!__appStarted && __pendingInitialLoads.size === 0) {
                     __appStarted = true;
+                    document.getElementById('auth-gate').style.display = 'none';
+                    document.getElementById('app-layout-root').style.visibility = 'visible';
                     initApp();
                 }
             });
